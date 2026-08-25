@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>El Rincón del Localizador — CSS y XPath</title>
+
+<!-- Tailwind por Play CDN: sin build, sin Node, se abre con doble clic.
+     A cambio necesita internet la primera vez que se carga la página
+     (después el navegador la cachea). Si en algún momento se quiere
+     independencia total de internet, esto es lo primero que hay que
+     cambiar por un build con Tailwind CLI. -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          rojo: { DEFAULT: '#c0392b', vivo: '#e05a2b' },
+          fondo: '#131010',
+          panel: '#1c1717',
+          'panel-claro': '#241d1d',
+          borde: '#3a2c2c',
+          crema: '#f2e9e4',
+          tenue: '#b9a99e',
+          exito: '#2ecc71',
+          error: '#e74c3c',
+          aviso: '#f1c40f',
+          gimnasio: '#171314',
+          codigo: '#0e0c0c'
+        }
+      }
+    }
+  };
+</script>
+
+<!-- Clases que arma dinámicamente el JS (visor.js / app.js) armando el
+     className completo por código, así que no pueden vivir como
+     utilidades sueltas en el HTML: quedan acá como componentes de
+     Tailwind (@apply), pero siguen usando la misma paleta de arriba. -->
+<style type="text/tailwindcss">
+  @layer components {
+    .linea-visor { white-space: pre; }
+    .sv-tag { @apply text-sky-400; }
+    .sv-attr-name { @apply text-amber-400; }
+    .sv-attr-value { @apply text-lime-300; }
+    .sv-punct { @apply text-stone-500; }
+    .sv-text { @apply text-crema; }
+    .resaltado-linea { @apply bg-yellow-400/15 outline outline-1 outline-yellow-400/50 rounded; }
+    .resaltado-span { @apply bg-yellow-400/60 text-fondo rounded-sm; }
+
+    .mensaje { @apply block min-h-[1.4em] mt-2.5 px-3 py-2 rounded-md text-[0.92em]; }
+    .mensaje-exito { @apply bg-exito/15 text-emerald-300; }
+    .mensaje-error { @apply bg-error/15 text-red-300; }
+    .mensaje-aviso { @apply bg-aviso/15 text-yellow-200; }
+    .mensaje-neutral { @apply bg-white/5 text-tenue; }
+
+    .badge-modo { @apply text-white font-bold text-xs px-2 py-1 rounded tracking-wide; }
+    .badge-modo-css { @apply bg-sky-700; }
+    .badge-modo-xpath { @apply bg-purple-700; }
+  }
+  .oculto { display: none !important; }
+</style>
+
+<!-- Estilos del panel "Tu boxeador" (js/espejo.js): reproduce, a mayor
+     escala, la geometría real de #peleador dentro del iframe (misma
+     posición de slots), pero vive afuera porque es puro espejo visual,
+     no el DOM bajo prueba. -->
+<style>
+  /* Misma geometría que .peleador en vestuario.js, escalada x1.35 y calculada
+     en valores reales (no con transform:scale, para que la caja de layout
+     coincida con el tamaño pintado y no se desborde sobre el panel vecino
+     en pantallas angostas). */
+  .espejo-silueta-contenedor {
+    position: relative; width: 243px; height: 378px; border-radius: 14px;
+    background: #241b1b; overflow: hidden; box-shadow: 0 10px 26px rgba(0,0,0,.5);
+  }
+  .espejo-silueta-contenedor:not(.con-peleador)::after {
+    content: "Elegí a tu peleador para verlo acá"; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    padding: 14px; color: #b9a99e; font-size: .85em;
+  }
+  .espejo-silueta { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: none; }
+  .espejo-silueta.espejo-silueta-activa { display: block; }
+  .espejo-slot {
+    position: absolute; width: 46px; height: 46px;
+    border: 2px dashed rgba(242,233,228,.35); border-radius: 50%;
+  }
+  .espejo-slot img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
+  .espejo-slot.espejo-slot-lleno { border-style: solid; border-color: #e05a2b; background: rgba(224,90,43,.15); }
+  .espejo-slot[data-slot="casco"] { top: 3px; left: 99px; width: 59px; height: 59px; }
+  .espejo-slot[data-slot="bucal"] { top: 54px; left: 112px; width: 32px; height: 32px; }
+  .espejo-slot[data-slot="venda-izq"] { top: 159px; left: 24px; }
+  .espejo-slot[data-slot="venda-der"] { top: 159px; left: 173px; }
+  .espejo-slot[data-slot="guante-izq"] { top: 203px; left: 8px; }
+  .espejo-slot[data-slot="guante-der"] { top: 203px; left: 189px; }
+  .espejo-slot[data-slot="short"] { top: 257px; left: 99px; width: 59px; height: 46px; border-radius: 10px; }
+  .espejo-slot[data-slot="botas"] { top: 319px; left: 99px; width: 59px; height: 46px; border-radius: 10px; }
+</style>
+</head>
+<body class="m-0 bg-fondo text-crema font-sans pb-3">
+
+<header class="bg-[linear-gradient(135deg,#4a1414,#1a0d0d)] border-b-4 border-rojo px-4 py-2.5">
+  <div class="max-w-[1800px] mx-auto flex items-center justify-between gap-3 flex-wrap">
+    <div class="flex items-baseline gap-2 flex-wrap">
+      <h1 class="m-0 text-[1.2em] tracking-wide whitespace-nowrap">🥊 El Rincón del Localizador</h1>
+      <p class="m-0 text-tenue text-[0.8em]">Armá al peleador escribiendo el selector CSS o XPath correcto</p>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap shrink-0">
+      <button type="button" id="boton-tabla-css" class="badge-modo badge-modo-css cursor-pointer hover:brightness-110">📋 CSS</button>
+      <button type="button" id="boton-tabla-xpath" class="badge-modo badge-modo-xpath cursor-pointer hover:brightness-110">📋 XPath</button>
+      <div id="progreso" class="bg-rojo text-white font-semibold px-3 py-1 rounded-full text-[0.85em] tracking-wide">Ronda 1 / 27</div>
+    </div>
+  </div>
+</header>
+
+<div id="modal-referencia" class="oculto fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" role="dialog" aria-modal="true" aria-labelledby="modal-referencia-titulo">
+  <div class="bg-panel border border-borde rounded-xl w-full max-w-4xl max-h-[85vh] flex flex-col">
+    <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-borde shrink-0">
+      <div class="flex items-center gap-2">
+        <h2 id="modal-referencia-titulo" class="sr-only">Selectores CSS</h2>
+        <button type="button" id="modal-tab-css" class="badge-modo badge-modo-css cursor-pointer">CSS</button>
+        <button type="button" id="modal-tab-xpath" class="badge-modo badge-modo-xpath cursor-pointer opacity-50">XPath</button>
+      </div>
+      <button type="button" id="modal-referencia-cerrar" aria-label="Cerrar" class="text-tenue hover:text-crema text-2xl leading-none cursor-pointer bg-transparent border-0">&times;</button>
+    </div>
+    <div class="overflow-auto px-4 py-3">
+
+      <table id="tabla-referencia-css" class="w-full text-left border-collapse text-[0.85em]">
+        <thead>
+          <tr class="text-tenue text-xs uppercase tracking-wider">
+            <th class="px-3 py-2 border-b border-borde">Selector</th>
+            <th class="px-3 py-2 border-b border-borde">Ejemplo</th>
+            <th class="px-3 py-2 border-b border-borde">Descripción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">.class</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">.mi-clase</td><td class="px-3 py-2 text-crema align-top">Selecciona todos los elementos que contienen la clase.</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">class1.class2</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">.mi-clase.mi-otra-clase</td><td class="px-3 py-2 text-crema align-top">Selecciona todos los elementos que contienen ambas clases.</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">.class1 .class2</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">.mi-clase .mi-otra-clase</td><td class="px-3 py-2 text-crema align-top">Selecciona todos los elementos que se encuentren dentro de la class1 y que contienen class2.</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">#id</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">#mi-id</td><td class="px-3 py-2 text-crema align-top">Selecciona todos los elementos que contienen el id.</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">element</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">div</td><td class="px-3 py-2 text-crema align-top">Selecciona todos los elementos igual al ingresado.</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">element.class</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">p .mi-clase</td><td class="px-3 py-2 text-crema align-top">Selecciona todos los elementos igual al ingresado y que contenga dicha clase.</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">element, element</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">div, p</td><td class="px-3 py-2 text-crema align-top">Selecciona todos los elementos que se encuentran antes de la coma, más los que se encuentran luego de la coma.</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">element element</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">div div div div p</td><td class="px-3 py-2 text-crema align-top">Selecciona el último elemento accediendo por orden jerárquico de izquierda a derecha.</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">element &gt; element</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">div &gt; p</td><td class="px-3 py-2 text-crema align-top">Selecciona el elemento que es hijo directo (un único nivel) del anterior.</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">[attribute]</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">[data-qa]</td><td class="px-3 py-2 text-crema align-top">Selecciona los elementos que contengan dicho atributo.</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">[attribute=value]</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">[style="background-color:green;"]</td><td class="px-3 py-2 text-crema align-top">Selecciona los elementos que contengan dicho valor exacto en el atributo elegido.</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">[attribute~=value]</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">[data-tags~="practica"]</td><td class="px-3 py-2 text-crema align-top">Selecciona los elementos donde el atributo contenga esa palabra completa dentro de una lista separada por espacios.</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">[attribute|=value]</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">[style|="background"]</td><td class="px-3 py-2 text-crema align-top">Selecciona los elementos que contengan ese valor exacto, o ese valor seguido de un guion, en el atributo.</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">[attribute^=value]</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">a[href^="https"]</td><td class="px-3 py-2 text-crema align-top">Selecciona los elementos cuyo atributo comience con el valor ingresado.</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">[attribute$=value]</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">a[href$=".uy/"]</td><td class="px-3 py-2 text-crema align-top">Selecciona los elementos cuyo atributo finalice con el valor ingresado.</td></tr>
+          <tr><td class="px-3 py-2 font-mono text-amber-400 align-top">[attribute*=value]</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">a[href*="ces"]</td><td class="px-3 py-2 text-crema align-top">Selecciona todos los elementos cuyo atributo contenga el valor ingresado en cualquier parte.</td></tr>
+        </tbody>
+      </table>
+
+      <table id="tabla-referencia-xpath" class="oculto w-full text-left border-collapse text-[0.85em]">
+        <thead>
+          <tr class="text-tenue text-xs uppercase tracking-wider">
+            <th class="px-3 py-2 border-b border-borde">Selector</th>
+            <th class="px-3 py-2 border-b border-borde">Ejemplo</th>
+            <th class="px-3 py-2 border-b border-borde">Descripción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">nodename</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">div</td><td class="px-3 py-2 text-crema align-top">Selecciona todos los nodos con el nombre "nodename".</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">/</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded leading-relaxed">/html/body/div/div/div<br>/html/body/div/div/div[1]</td><td class="px-3 py-2 text-crema align-top">Selecciona desde el nodo raíz (ruta absoluta).</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">//</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">//a</td><td class="px-3 py-2 text-crema align-top">Selecciona nodos en cualquier parte del documento, sin importar dónde se encuentren.</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">// /</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">//div/a</td><td class="px-3 py-2 text-crema align-top">Entra a un nodo hijo desde un nodo padre, sin importar dónde está el padre.</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">.</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">//body/div/div/div/.</td><td class="px-3 py-2 text-crema align-top">Selecciona el nodo actual.</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">..</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">//body/div/div/div/..</td><td class="px-3 py-2 text-crema align-top">Selecciona el padre del nodo actual.</td></tr>
+          <tr class="border-b border-borde"><td class="px-3 py-2 font-mono text-amber-400 align-top">@</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">//a[@href='https://www.ces.com.uy/']</td><td class="px-3 py-2 text-crema align-top">Selecciona atributos en vez de elementos.</td></tr>
+          <tr><td class="px-3 py-2 font-mono text-amber-400 align-top">[condición]</td><td class="px-3 py-2 font-mono text-lime-300 align-top bg-codigo rounded">//div[p="Link roto: "]</td><td class="px-3 py-2 text-crema align-top">Selecciona todos los elementos que cumplen la condición indicada.</td></tr>
+        </tbody>
+      </table>
+
+    </div>
+  </div>
+</div>
+
+<main class="grid grid-cols-[0.5fr_1fr_1.3fr] gap-3 max-w-[1800px] mx-auto mt-2 mb-1 px-3">
+  <section class="bg-panel border border-borde rounded-xl px-2.5 pt-1.5 pb-3 flex flex-col overflow-hidden h-[min(66vh,620px)] min-h-[400px] min-w-0">
+    <h2 class="mb-1 text-[0.85em] uppercase tracking-wider text-tenue">Tu boxeador</h2>
+    <div id="espejo-peleador" class="flex-1 w-full min-h-0 flex items-center justify-center overflow-hidden">
+      <div class="espejo-silueta-contenedor">
+        <img class="espejo-silueta" data-genero-img="m" src="img/boxeador.png" alt="Silueta del boxeador">
+        <img class="espejo-silueta" data-genero-img="f" src="img/boxeadora.png" alt="Silueta de la boxeadora">
+        <span class="espejo-slot" data-slot="casco"></span>
+        <span class="espejo-slot" data-slot="bucal"></span>
+        <span class="espejo-slot" data-slot="venda-izq"></span>
+        <span class="espejo-slot" data-slot="venda-der"></span>
+        <span class="espejo-slot" data-slot="guante-izq"></span>
+        <span class="espejo-slot" data-slot="guante-der"></span>
+        <span class="espejo-slot" data-slot="short"></span>
+        <span class="espejo-slot" data-slot="botas"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-panel border border-borde rounded-xl px-2.5 pt-1.5 pb-3 flex flex-col h-[min(66vh,620px)] min-h-[400px] min-w-0">
+    <h2 class="mb-1 text-[0.85em] uppercase tracking-wider text-tenue">El gimnasio</h2>
+    <iframe id="iframe-gimnasio" class="flex-1 w-full min-h-[400px] border-0 rounded-lg bg-gimnasio" title="Gimnasio de boxeo"></iframe>
+  </section>
+
+  <section class="bg-panel border border-borde rounded-xl px-2.5 pt-1.5 pb-3 flex flex-col h-[min(66vh,620px)] min-h-[400px] min-w-0">
+    <h2 class="mb-1 text-[0.85em] uppercase tracking-wider text-tenue">HTML en vivo</h2>
+    <div id="visor-codigo" class="flex-1 min-w-0 overflow-auto bg-codigo rounded-lg px-2.5 py-2.5 font-mono text-[0.85em] leading-relaxed whitespace-pre" aria-live="off"></div>
+  </section>
+</main>
+
+<section id="consola" class="max-w-[1800px] mx-auto px-3 pt-1 grid grid-cols-1 md:grid-cols-[1fr_1fr_0.5fr] gap-3 items-stretch">
+
+  <!-- Bloque 1: info del round -->
+  <div class="bg-panel border border-borde rounded-xl px-3 py-4 flex flex-col gap-2">
+    <div class="flex items-start justify-between gap-2 flex-wrap">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span id="badge-modo" class="badge-modo badge-modo-css">CSS</span>
+        <h2 id="titulo-round" class="m-0 text-[1.15em]">Round</h2>
+      </div>
+      <span id="badge-tecnica" class="bg-panel-claro border border-borde text-tenue font-mono text-[0.8em] px-2 py-1 rounded-md">técnica</span>
+    </div>
+    <p id="consigna" class="text-crema leading-relaxed m-0">Cargando…</p>
+  </div>
+
+  <form id="form-selector" class="contents" autocomplete="off">
+    <!-- Bloque 2: input + mensajes -->
+    <div class="bg-panel border border-borde rounded-xl px-3 py-4 flex flex-col gap-2.5">
+      <input
+        type="text"
+        id="entrada-selector"
+        class="w-full bg-panel-claro border-2 border-borde rounded-lg px-2.5 py-2.5 text-crema font-mono text-base focus:outline-none focus:border-rojo-vivo disabled:opacity-60"
+        placeholder="Escribí tu selector acá..."
+        autocomplete="off"
+        autocapitalize="off"
+        spellcheck="false"
+      >
+      <div id="mensaje" class="mensaje" role="status" aria-live="polite"></div>
+    </div>
+
+    <!-- Bloque 3: botones -->
+    <div class="bg-panel border border-borde rounded-xl px-3 py-4 flex flex-col justify-center gap-2.5">
+      <button type="submit" id="boton-confirmar" class="border-0 rounded-lg px-3 py-2.5 font-semibold cursor-pointer text-[0.95em] bg-rojo text-white hover:bg-rojo-vivo disabled:opacity-50 disabled:cursor-default disabled:hover:bg-rojo">Tirar el golpe</button>
+      <button type="button" id="boton-pista" class="border-0 rounded-lg px-3 py-2.5 font-semibold cursor-pointer text-[0.95em] bg-panel-claro text-crema border border-borde hover:border-rojo-vivo">💡 Pista</button>
+      <button type="button" id="boton-solucion" class="border-0 rounded-lg px-3 py-2.5 font-semibold cursor-pointer text-[0.95em] bg-panel-claro text-crema border border-borde hover:border-rojo-vivo">👁 Ver solución</button>
+      <button type="button" id="boton-siguiente" class="oculto border-0 rounded-lg px-3 py-2.5 font-semibold cursor-pointer text-[0.95em] bg-rojo text-white hover:bg-rojo-vivo">Siguiente asalto ▶</button>
+    </div>
+  </form>
+</section>
+
+<section id="pantalla-final" class="oculto max-w-[640px] mx-auto text-center px-3 mt-16">
+  <h2 class="text-[1.6em]">🔔 ¡Peleador listo para el combate!</h2>
+  <p>Completaste los <span id="total-rounds">25</span> rounds y recorriste todas las técnicas de las tablas de CSS y XPath.</p>
+  <p class="text-tenue">Volvé a abrir esta página cuando quieras repasar cualquier técnica.</p>
+</section>
+
+<script src="js/gimnasio-html.js"></script>
+<script src="js/vestuario.js"></script>
+<script src="js/niveles.js"></script>
+<script src="js/motor.js"></script>
+<script src="js/visor.js"></script>
+<script src="js/espejo.js"></script>
+<script src="js/referencia.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
