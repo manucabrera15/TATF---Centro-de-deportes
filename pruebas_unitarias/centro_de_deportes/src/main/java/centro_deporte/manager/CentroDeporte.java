@@ -38,7 +38,7 @@ public class CentroDeporte implements ICentroDeporte {
 
     @Override
     public void crearDeporte(String nombreDeporte) {
-        listaDeportes.add(nombreDeporte + "[DEPORTE]");
+        listaDeportes.add(nombreDeporte);
     }
 
     @Override

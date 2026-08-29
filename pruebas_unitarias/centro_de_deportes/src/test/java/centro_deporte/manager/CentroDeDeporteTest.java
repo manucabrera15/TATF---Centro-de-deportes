@@ -53,13 +53,17 @@ public class CentroDeDeporteTest {
     void obtenerDeportesPorLetraDebeRetornarElementos() {
         List<String> deportes = centro.obtenerDeportes("F");
         assertFalse(deportes.isEmpty());
+
+        for (String deporte : deportes){
+            assertTrue(deporte.startsWith("F"));
+        }
     }
 
     @Test
     void crearDeporteDebeAgregarNuevoDeporte() {
         centro.crearDeporte("Padel");
         assertTrue(centro.obtenerDeportes()
-                .contains("Padel[DEPORTE]"));
+                .contains("Padel"));
     }
 
     @Test
@@ -68,8 +72,9 @@ public class CentroDeDeporteTest {
                 "Fútbol",
                 "Padel"
         );
-        assertTrue(centro.obtenerDeportes()
-                .contains("Padel"));
+        List<String> deportes = centro.obtenerDeportes();
+        assertTrue(deportes.contains("Padel"));
+        assertFalse(deportes.contains("Fútbol"));
     }
 
     @Test

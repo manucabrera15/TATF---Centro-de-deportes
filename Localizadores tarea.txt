@@ -1,0 +1,37 @@
+Objetivo 1
+Obtener el elemento que contiene el texto: “START BOOTSTRAP”.
+XPath: //a[text()='Start Bootstrap']
+CSS: a.navbar-brand
+
+Objetivo 2:
+Obtener el elemento que contiene el texto: “Graphic Artist - Web Designer - Illustrator”.
+XPath: //p[text()='Graphic Artist - Web Designer - Illustrator'
+CSS: p.masthead-subheading.font-weight-light.mb-0
+
+Objetivo 3:
+Obtener el elemento padre del elemento que contiene el texto: “Freelancer is a free
+bootstrap theme created by Start Bootstrap. The download includes the complete
+source files including HTML, CSS, and JavaScript as well as optional SASS stylesheets
+for easy customization.”
+XPath: //p[contains(text()'Freelancer is a free bootstrap theme created by Start Bootstrap. The download includes the complete source files including HTML, CSS, and JavaScript as well as optional SASS stylesheets for easy customization.']/..
+CSS: div.col-lg-4.ms-auto
+
+Objetivo 4:
+Obtener el elemento padre del elemento que contiene el texto: “2215 John Daniel Drive
+Clark, MO 65243”.
+XPath: //p[contains(.,'2215 John Daniel Drive') and contains(.,'Clark, MO 65243')]/..
+CSS: div.col-lg-4.mb-4.lead.mb-0
+
+Objetivo 5:
+Obtener el elemento de la red social LinkedIn.
+XPath: //a[.//i[contains(@class,'fa-linkedin-in')]]
+CSS: a i.fa-linkedin-in
+
+Objetivo 6:
+Obtener el elemento del botón de descarga con el texto: “Free Download ”.
+XPath: //a[contains(.,'Free Download!')]
+CSS: a.btn.btn-xl.btn-outline-light
+
+Objetivo 7:
+XPath: //img[contains(@src,'cabin.png')]..
+CSS: #portfolioModal1 .modal-body .container .row .col-lg-8
