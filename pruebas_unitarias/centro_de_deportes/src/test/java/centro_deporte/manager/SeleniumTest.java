@@ -56,14 +56,18 @@ public class SeleniumTest {
 
     @Test
     void AccederCES() throws InterruptedException {
+
+        String usuario = "ci54387488";
+        String contraseña = "bjm2715_";
+
         driver.get("https://capacitacion.ces.com.uy/");
         WebElement acceder = driver.findElement(
                 By.cssSelector("a[href='https://capacitacion.ces.com.uy/login/index.php']"));
         acceder.click();
         driver.findElement(By.id("username")).click();
-        driver.findElement(By.id("username")).sendKeys("ci54387488");
+        driver.findElement(By.id("username")).sendKeys(usuario);
         driver.findElement(By.id("password")).click();
-        driver.findElement(By.id("password")).sendKeys("bjm2715_");
+        driver.findElement(By.id("password")).sendKeys(contraseña);
         driver.findElement(By.id("loginbtn")).click();
         driver.findElement(By.id("user-menu-toggle")).click();
         driver.get("https://capacitacion.ces.com.uy/my/courses.php");
