@@ -57,8 +57,8 @@ public class SeleniumTest {
     @Test
     void AccederCES() throws InterruptedException {
 
-        String usuario = "ci54387488";
-        String contraseña = "bjm2715_";
+        String usuario = "";
+        String contraseña = "";
 
         driver.get("https://capacitacion.ces.com.uy/");
         WebElement acceder = driver.findElement(
