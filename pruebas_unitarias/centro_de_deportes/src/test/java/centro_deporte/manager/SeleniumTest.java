@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
+import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -13,6 +14,8 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class SeleniumTest {
 
@@ -35,9 +38,15 @@ public class SeleniumTest {
     void abrirPagina() throws InterruptedException {
 
         driver.get("https://www.google.com/?gws_rd=cr&ei=bIeRVIzyB8KLNsjagvgK");
+        Thread.sleep(2000);
+        driver.findElement(By.className("gLFyf")).sendKeys("Uruguay");
+        Thread.sleep(2000);
+        driver.findElement(By.className("gLFyf"))
+                .sendKeys(Keys.ENTER);
 
-        String titulo = driver.getTitle();
-        Assertions.assertEquals("Google", titulo, "El titulo de la página no es el que se busca");
+
+        assertTrue(driver.getTitle().contains("Uruguay"),
+                "La búsqueda no se realizó correctamente");
         Thread.sleep(2000);
     }
 
@@ -57,36 +66,61 @@ public class SeleniumTest {
     @Test
     void AccederCES() throws InterruptedException {
 
-        String usuario = "";
-        String contraseña = "";
+        String usuario = "ci54387488";
+        String contraseña = "bjm2715_";
 
         driver.get("https://capacitacion.ces.com.uy/");
-        WebElement acceder = driver.findElement(
-                By.cssSelector("a[href='https://capacitacion.ces.com.uy/login/index.php']"));
-        acceder.click();
-        driver.findElement(By.id("username")).click();
+        Thread.sleep(2000);
+
+        driver.findElement(By.cssSelector("a[href='https://capacitacion.ces.com.uy/login/index.php']")).click();
+        Thread.sleep(2000);
         driver.findElement(By.id("username")).sendKeys(usuario);
-        driver.findElement(By.id("password")).click();
+        Thread.sleep(2000);
         driver.findElement(By.id("password")).sendKeys(contraseña);
+        Thread.sleep(2000);
         driver.findElement(By.id("loginbtn")).click();
+        Thread.sleep(2000);
+
         driver.findElement(By.id("user-menu-toggle")).click();
-        driver.get("https://capacitacion.ces.com.uy/my/courses.php");
-        driver.get("https://capacitacion.ces.com.uy/course/view.php?id=1128");
-        driver.findElement(By.className("activityname")).click();
-        driver.findElement(By.name("search")).click();
-        driver.findElement(By.name("search")).sendKeys("Bienvenidos/as al curso!");
-        driver.findElement(By.className("search-icon")).click();
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        Thread.sleep(2000);
+        driver.findElement(By.linkText("Mis cursos")).click();
+        Thread.sleep(10000);
+        for (String ventana : driver.getWindowHandles()) {
+            driver.switchTo().window(ventana);
 
-        WebElement titulo = wait.until(
+            if (driver.getCurrentUrl().contains("my/courses.php")) {
+                break;
+            }
+        }
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
+
+        WebElement buscador = wait.until(
+                ExpectedConditions.visibilityOfElementLocated(By.id("searchinput")));
+        Thread.sleep(10000);
+        buscador.clear();
+        buscador.sendKeys("Taller de Automatización del Testing Funcional");
+
+        Thread.sleep(5000);
+
+        driver.findElement(By.cssSelector("a[href*='course/view.php?id=1128']")).click();
+        Thread.sleep(2000);
+
+        driver.findElement(By.xpath("//a[contains(normalize-space(), 'Foros')]")).click();
+        Thread.sleep(2000);
+        driver.findElement(By.name("search")).sendKeys("Bienvenida");
+        Thread.sleep(2000);
+        driver.findElement(By.name("search")).sendKeys(Keys.ENTER);
+
+        WebDriverWait wait2 = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+        WebElement resultado = wait.until(
                 ExpectedConditions.visibilityOfElementLocated(
-                        By.className("font-weight-bold")
-                )
-        );
+                        By.cssSelector("span.highlight")));
 
-        String texto = titulo.getText();
+        String texto = resultado.getText();
 
-        Assertions.assertEquals("Novedades del curso -> Bienvenidos/as al curso!",texto,"El resultado no es el esperado");
+        Assertions.assertEquals("bienvenida", texto.toLowerCase(),
+                "El resultado no es el esperado");
         Thread.sleep(2000);
     }
 }
